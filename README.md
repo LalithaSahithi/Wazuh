@@ -1,0 +1,1 @@
+Here are some of the things I explored while configuring Wazuh- An open sourse SIEM tool at an enterprise level. Now, a lot of the things I did here was during my internship, so some data might be confidential, however I can share procedures here. Please feel free to review them.
