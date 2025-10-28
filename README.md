@@ -1,1 +1,3 @@
-Here are some of the things I explored while configuring Wazuh- An open sourse SIEM tool at an enterprise level. Now, a lot of the things I did here was during my internship, so some data might be confidential, however I can share procedures here. Please feel free to review them.
+I’ve been building a hands-on SOAR lab environment that integrates Wazuh (SIEM) with TheHive and Cortex (incident response and automation). The setup simulates real-world SOC workflows — from alert ingestion and correlation in Wazuh, to automated case creation and enrichment via Cortex analyzers, all orchestrated within TheHive.
+
+This lab allows me to practice end-to-end detection and response, automate repetitive triage steps, and experiment with custom playbooks for phishing, malware, and privilege escalation scenarios. It’s been an excellent way to bridge security monitoring with response automation and deepen my understanding of how SOAR platforms streamline incident handling.
