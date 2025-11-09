@@ -1,0 +1,602 @@
+
+## Overview
+
+Here's a comprehensive guide provides step-by-step commands and troubleshooting procedures for deploying and maintaining a full Security Orchestration, Automation and Response (SOAR) stack using Wazuh SIEM, TheHive case management platform, and Cortex analyzers. Whether you're setting up your first SOAR environment or troubleshooting integration issues in production, this document covers everything from Docker container management and network connectivity to alert generation and API testing.
+
+**What you'll find in this guide:**
+
+- Docker commands for managing Wazuh, TheHive, and Cortex containers
+- Network troubleshooting for VM and container connectivity issues
+- Wazuh agent deployment and management (Linux and Windows)
+- Custom integration script configuration and testing
+- TheHive API operations and alert verification
+- Real-world alert generation examples for testing
+- Common issues and their solutions
+- Quick reference commands for daily operations
+
+This guide is based on real-world deployment experience and addresses common pitfalls encountered when integrating these powerful open-source security tools in a containerized environment.
+
+**Infrastructure Used:**
+
+- Ubuntu 20.04 LTS host (VMware) 
+- Docker & Docker Compose 
+- Wazuh Manager 4.13.1 
+- TheHive 4.1.24-1 
+- Cortex (Latest) 
+- Elasticsearch & Cassandra versions 
+- **Windows Server 2022** as the monitored agent ( more to come )
+- VMware networking details
+## Table of Contents
+
+1. [Container Management](https://claude.ai/chat/102e0f40-013c-4316-a189-2a875992c5a4#container-management)
+2. [Network Troubleshooting](https://claude.ai/chat/102e0f40-013c-4316-a189-2a875992c5a4#network-troubleshooting)
+3. [Wazuh Agent Management](https://claude.ai/chat/102e0f40-013c-4316-a189-2a875992c5a4#wazuh-agent-management)
+4. [Integration Troubleshooting](https://claude.ai/chat/102e0f40-013c-4316-a189-2a875992c5a4#integration-troubleshooting)
+5. [TheHive & Cortex](https://claude.ai/chat/102e0f40-013c-4316-a189-2a875992c5a4#thehive--cortex)
+6. [Alert Generation & Testing](https://claude.ai/chat/102e0f40-013c-4316-a189-2a875992c5a4#alert-generation--testing)
+7. [Configuration Files](https://claude.ai/chat/102e0f40-013c-4316-a189-2a875992c5a4#configuration-files)
+
+---
+
+## 1. Container Management
+
+### List Running Containers
+
+```bash
+docker ps
+docker ps -a  # Include stopped containers
+```
+
+### Start/Stop Containers
+
+```bash
+# Start all services
+docker-compose up -d
+
+# Stop all services
+docker-compose down
+
+# Restart specific container
+docker restart <your_Wazuh-manager_container_name>
+docker restart thehive
+docker restart cortex
+```
+
+### Access Container Shell
+
+```bash
+# Wazuh Manager
+docker exec -it <your_Wazuh-manager_container_name> bash
+
+# TheHive
+docker exec -it thehive bash
+
+# Cortex
+docker exec -it cortex bash
+```
+
+### View Container Logs
+
+```bash
+# Real-time logs
+docker logs -f <your_Wazuh-manager_container_name>
+docker logs -f thehive
+docker logs -f cortex
+
+# Last 50 lines
+docker logs --tail 50 <your_Wazuh-manager_container_name>
+```
+
+### Check Container Networks
+
+```bash
+# List networks
+docker network ls
+
+# Inspect specific network
+docker network inspect Hive
+
+# Check container's network
+docker inspect <your_Wazuh-manager_container_name> | grep NetworkMode
+```
+
+---
+
+## 2. Network Troubleshooting
+
+### VM Network Issues
+
+#### Check Interface Status
+
+```bash
+# View all interfaces
+ip addr show
+ifconfig
+
+# Specific interface
+ip addr show <your_interface>
+```
+
+#### Bring Interface Up
+
+```bash
+# Bring up interface
+sudo ip link set <your_interface> up
+
+# Request DHCP
+sudo dhclient -v <your_interface>
+
+# Restart NetworkManager
+sudo systemctl restart NetworkManager
+```
+
+#### Test Connectivity
+
+```bash
+# Test internet
+ping -c 3 8.8.8.8
+ping -c 3 google.com
+
+# Test from container
+docker exec <your_Wazuh-manager_container_name> ping -c 3 8.8.8.8
+
+# Test specific port
+telnet <STACK_IP> 9000
+nc -zv <STACK_IP> 9000
+```
+
+#### VMware Network Fix
+
+```bash
+# Install VMware Tools
+sudo apt update
+sudo apt install open-vm-tools open-vm-tools-desktop -y
+sudo reboot
+```
+
+---
+
+## 3. Wazuh Agent Management
+
+### List Agents
+
+```bash
+docker exec <your_Wazuh-manager_container_name> /var/ossec/bin/agent_control -l
+```
+
+### Check Agent Status
+
+```bash
+# Detailed agent info
+docker exec <your_Wazuh-manager_container_name> /var/ossec/bin/agent_control -i 001
+
+# Check connected agents
+docker exec <your_Wazuh-manager_container_name> /var/ossec/bin/agent_control -lc
+```
+
+### View Wazuh Logs
+
+```bash
+# Manager logs
+docker exec <your_Wazuh-manager_container_name> tail -f /var/ossec/logs/ossec.log
+
+# Alert logs (JSON)
+docker exec <your_Wazuh-manager_container_name> tail -f /var/ossec/logs/alerts/alerts.json
+
+# Integration logs
+docker exec <your_Wazuh-manager_container_name> tail -f /var/ossec/logs/integrations.log
+
+# View last 100 alerts
+docker exec <your_Wazuh-manager_container_name> tail -100 /var/ossec/logs/alerts/alerts.json
+```
+
+### Restart Wazuh Services
+
+```bash
+# Restart Wazuh manager
+docker exec <your_Wazuh-manager_container_name> /var/ossec/bin/wazuh-control restart
+
+# Check status
+docker exec <your_Wazuh-manager_container_name> /var/ossec/bin/wazuh-control status
+```
+
+### 4. Windows Agent Commands
+
+#### Check Agent Status (Windows PowerShell)
+
+```powershell
+# Check service status
+Get-Service WazuhSvc
+
+# Start/Stop service
+NET START WazuhSvc
+NET STOP WazuhSvc
+
+# View agent logs
+Get-Content "C:\Program Files (x86)\ossec-agent\ossec.log" -Tail 50
+```
+
+#### Agent Configuration
+
+```powershell
+# View config
+Get-Content "C:\Program Files (x86)\ossec-agent\ossec.conf"
+
+# Edit config (replace manager IP)
+(Get-Content "C:\Program Files (x86)\ossec-agent\ossec.conf") -replace '0.0.0.0', '<STACK_IP>' | Set-Content "C:\Program Files (x86)\ossec-agent\ossec.conf"
+```
+
+---
+
+## 5. Integration Troubleshooting
+
+### Check Integration Configuration
+
+```bash
+# View integration block in ossec.conf
+docker exec <your_Wazuh-manager_container_name> cat /var/ossec/etc/ossec.conf | grep -A 7 "<integration>"
+```
+
+### Verify Integration Script
+
+```bash
+# Check if script exists
+docker exec <your_Wazuh-manager_container_name> ls -la /var/ossec/integrations/custom-w2thive.py
+
+# View script content
+docker exec <your_Wazuh-manager_container_name> cat /var/ossec/integrations/custom-w2thive.py
+
+# Check permissions
+docker exec <your_Wazuh-manager_container_name> ls -la /var/ossec/integrations/
+```
+
+### Install thehive4py
+
+```bash
+# Install in Wazuh container
+docker exec <your_Wazuh-manager_container_name> /var/ossec/framework/python/bin/pip3 install thehive4py==1.8.1
+
+# Verify installation
+docker exec <your_Wazuh-manager_container_name> /var/ossec/framework/python/bin/pip3 list | grep thehive
+```
+
+### Test Integration Manually
+
+```bash
+# Capture a test alert
+docker exec <your_Wazuh-manager_container_name> sh -c 'tail -1 /var/ossec/logs/alerts/alerts.json > /tmp/test_alert.json'
+
+# Test the script (replace with your actual API key)
+docker exec <your_Wazuh-manager_container_name> /var/ossec/framework/python/bin/python3 /var/ossec/integrations/custom-w2thive.py /tmp/test_alert.json http://<STACK_IP>:9000 YOUR_API_KEY
+```
+
+### Monitor Integration Activity
+
+```bash
+# Watch integration logs in real-time
+docker exec <your_Wazuh-manager_container_name> tail -f /var/ossec/logs/integrations.log
+
+# Count alerts sent
+docker exec <your_Wazuh-manager_container_name> grep -c "Create TheHive alert" /var/ossec/logs/integrations.log
+
+# Check for errors
+docker exec <your_Wazuh-manager_container_name> grep -i "error\|fail\|exception" /var/ossec/logs/integrations.log
+```
+
+### Check Alert Levels
+
+```bash
+# View alert level distribution
+docker exec <your_Wazuh-manager_container_name> tail -100 /var/ossec/logs/alerts/alerts.json | grep -o '"level":[0-9]*' | sort | uniq -c
+
+# Find high-severity alerts (level 7+)
+docker exec <your_Wazuh-manager_container_name> grep '"level":7\|"level":8\|"level":9\|"level":1[0-9]' /var/ossec/logs/alerts/alerts.json | tail -5
+```
+
+### Update Integration Configuration
+
+```bash
+# Copy config out
+docker cp <your_Wazuh-manager_container_name>:/var/ossec/etc/ossec.conf ./ossec.conf
+
+# Edit locally
+nano ossec.conf
+
+# Copy back
+docker cp ossec.conf <your_Wazuh-manager_container_name>:/var/ossec/etc/ossec.conf
+
+# Restart
+docker exec <your_Wazuh-manager_container_name> /var/ossec/bin/wazuh-control restart
+```
+
+---
+
+## 6. TheHive & Cortex
+
+### TheHive API Commands
+
+```bash
+# List alerts via API
+curl -H "Authorization: Bearer YOUR_API_KEY" http://<STACK_IP>:9000/api/alert
+
+# Format with json.tool
+curl -H "Authorization: Bearer YOUR_API_KEY" http://<STACK_IP>:9000/api/alert | python3 -m json.tool
+
+# Count alerts
+curl -H "Authorization: Bearer YOUR_API_KEY" http://<STACK_IP>:9000/api/alert | python3 -m json.tool | grep -c "\"id\""
+```
+
+### Access TheHive UI
+
+```
+URL: http://<STACK_IP>:9000
+Direct Alerts: http://<STACK_IP>:9000/index.html#!/alert/list
+```
+
+### Access Cortex UI
+
+```
+URL: http://<STACK_IP>:9001
+```
+
+### Check TheHive Logs
+
+```bash
+docker logs -f thehive
+docker logs --tail 100 thehive
+```
+
+### Verify Data Persistence
+
+```bash
+# Check volume mappings
+ls -lh ./thehive/data/
+ls -lh ./cassandra/data/
+ls -lh ./elasticsearch/data/
+```
+
+---
+
+## 7. Alert Generation & Testing
+
+### Windows Alert Generation
+
+#### Authentication Failures (Level 5-10)
+
+```powershell
+# Multiple failed logins
+for ($i=1; $i -le 15; $i++) {
+    runas /user:attacker123 "cmd.exe"
+    Start-Sleep -Seconds 1
+}
+# Click Cancel on each prompt
+```
+
+#### Registry Modifications (Level 7-10)
+
+```powershell
+# Add Run key (persistence)
+reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Run" /v MalwareTest /t REG_SZ /d "C:\temp\malware.exe" /f
+
+# Disable UAC
+reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" /v EnableLUA /t REG_DWORD /d 0 /f
+```
+
+#### File Integrity Monitoring (Real-time)
+
+```powershell
+# Create file in monitored Startup folder
+New-Item -Path "$env:PROGRAMDATA\Microsoft\Windows\Start Menu\Programs\Startup\backdoor.exe" -ItemType File -Force
+```
+
+#### Process Execution (Level 5-8)
+
+```powershell
+# Suspicious commands
+net user
+net localgroup administrators
+net share
+
+# PowerShell bypass
+powershell -ExecutionPolicy Bypass -Command "Write-Host 'Test'"
+```
+
+#### Service Manipulation (Level 8-10)
+
+```powershell
+# Create suspicious service
+sc create MaliciousService binPath= "C:\temp\bad.exe"
+
+# Stop security service
+Stop-Service WinDefend -Force
+```
+
+### Verify Alerts Were Generated
+
+```bash
+# Check recent HYDRA-DC alerts
+docker exec <your_Wazuh-manager_container_name> grep "HYDRA-DC" /var/ossec/logs/alerts/alerts.json | tail -10
+
+# Check if alerts were sent to TheHive
+docker exec <your_Wazuh-manager_container_name> tail -20 /var/ossec/logs/integrations.log
+```
+
+---
+
+## 8. Configuration Files
+
+### Key Configuration Locations
+
+#### Wazuh Manager
+
+```
+/var/ossec/etc/ossec.conf                    # Main configuration
+/var/ossec/etc/shared/default/agent.conf     # Agent configuration
+/var/ossec/integrations/custom-w2thive.py    # Integration script
+/var/ossec/logs/ossec.log                    # Manager logs
+/var/ossec/logs/alerts/alerts.json           # Alert logs
+/var/ossec/logs/integrations.log             # Integration logs
+```
+
+#### Windows Agent
+
+```
+C:\Program Files (x86)\ossec-agent\ossec.conf         # Configuration
+C:\Program Files (x86)\ossec-agent\ossec.log          # Agent logs
+C:\Program Files (x86)\ossec-agent\client.keys        # Agent keys
+```
+
+#### TheHive
+
+```
+./thehive/application.conf                    # TheHive config
+./thehive/data/                               # Data directory
+```
+
+#### Cortex
+
+```
+./cortex/application.conf                     # Cortex config
+./cortex/log/                                 # Log directory
+```
+
+### Sample Integration Block (ossec.conf)
+
+```xml
+<integration>
+  <name>custom-w2thive</name>
+  <hook_url>http://<STACK_IP>:9000</hook_url>
+  <api_key>YOUR_API_KEY_HERE</api_key>
+  <alert_format>json</alert_format>
+  <level>7</level>  <!-- Only alerts level 7 and above -->
+</integration>
+```
+
+### Sample Windows Agent Config (ossec.conf)
+
+```xml
+<client>
+  <server>
+    <address><STACK_IP></address>
+    <port>1514</port>
+    <protocol>tcp</protocol>
+  </server>
+  <crypto_method>aes</crypto_method>
+</client>
+```
+
+---
+
+## Common Issues & Solutions
+
+### Issue: Container can't access internet
+
+```bash
+# Check host network
+ping -c 3 8.8.8.8
+
+# If host works, check container
+docker exec <your_Wazuh-manager_container_name> ping -c 3 8.8.8.8
+
+# Fix: Restart Docker networking
+sudo systemctl restart docker
+```
+
+### Issue: thehive4py not found
+
+```bash
+# Install the module
+docker exec <your_Wazuh-manager_container_name> /var/ossec/framework/python/bin/pip3 install thehive4py==1.8.1
+
+# Verify
+docker exec <your_Wazuh-manager_container_name> /var/ossec/framework/python/bin/pip3 list | grep thehive
+```
+
+### Issue: Alerts not appearing in TheHive
+
+```bash
+# Check alert levels
+docker exec <your_Wazuh-manager_container_name> tail -100 /var/ossec/logs/alerts/alerts.json | grep -o '"level":[0-9]*' | sort | uniq -c
+
+# Lower threshold if needed (edit ossec.conf)
+<level>5</level>  # Instead of 7
+
+# Check integration logs
+docker exec <your_Wazuh-manager_container_name> tail -f /var/ossec/logs/integrations.log
+```
+
+### Issue: Windows agent not connecting
+
+```powershell
+# Check service
+Get-Service WazuhSvc
+
+# Check logs
+Get-Content "C:\Program Files (x86)\ossec-agent\ossec.log" -Tail 50
+
+# Verify manager IP in config
+Get-Content "C:\Program Files (x86)\ossec-agent\ossec.conf" | Select-String "address"
+```
+
+### Issue: Data lost after docker-compose down
+
+```bash
+# Verify volumes are mapped correctly in docker-compose.yml
+# Data should persist in:
+./thehive/data/
+./cassandra/data/
+./elasticsearch/data/
+
+# Check if data exists
+ls -lh ./thehive/data/
+```
+
+---
+
+## Quick Reference
+
+### Daily Operations
+
+```bash
+# Start environment
+cd ~/SIEM/wazuh-docker
+docker-compose up -d
+
+# Check status
+docker ps
+
+# Watch alerts flow
+docker exec <your_Wazuh-manager_container_name> tail -f /var/ossec/logs/integrations.log
+
+# Stop environment
+docker-compose down
+```
+
+### Generate Test Alert & Verify
+
+```powershell
+# On Windows
+for ($i=1; $i -le 10; $i++) {
+    runas /user:testuser "cmd.exe"
+    Start-Sleep -Seconds 1
+}
+```
+
+```bash
+# On Linux host - check if alert was sent
+docker exec <your_Wazuh-manager_container_name> tail -5 /var/ossec/logs/integrations.log
+
+# Check TheHive
+curl -H "Authorization: Bearer YOUR_API_KEY" http://<STACK_IP>:9000/api/alert | python3 -m json.tool | tail -20
+```
+
+---
+
+## Useful Resources
+
+- Wazuh Documentation: https://documentation.wazuh.com
+- TheHive Documentation: https://docs.thehive-project.org
+- Wazuh Rules: https://documentation.wazuh.com/current/user-manual/ruleset/
+- Alert Levels Guide: https://documentation.wazuh.com/current/user-manual/ruleset/rules-classification.html
+
+---
