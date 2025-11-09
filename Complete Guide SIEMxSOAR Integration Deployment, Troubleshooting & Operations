@@ -28,13 +28,13 @@ This guide is based on real-world deployment experience and addresses common pit
 - VMware networking details
 ## Table of Contents
 
-1. [Container Management](https://claude.ai/chat/102e0f40-013c-4316-a189-2a875992c5a4#container-management)
-2. [Network Troubleshooting](https://claude.ai/chat/102e0f40-013c-4316-a189-2a875992c5a4#network-troubleshooting)
-3. [Wazuh Agent Management](https://claude.ai/chat/102e0f40-013c-4316-a189-2a875992c5a4#wazuh-agent-management)
-4. [Integration Troubleshooting](https://claude.ai/chat/102e0f40-013c-4316-a189-2a875992c5a4#integration-troubleshooting)
-5. [TheHive & Cortex](https://claude.ai/chat/102e0f40-013c-4316-a189-2a875992c5a4#thehive--cortex)
-6. [Alert Generation & Testing](https://claude.ai/chat/102e0f40-013c-4316-a189-2a875992c5a4#alert-generation--testing)
-7. [Configuration Files](https://claude.ai/chat/102e0f40-013c-4316-a189-2a875992c5a4#configuration-files)
+1. Container Management
+2. Network Troubleshooting
+3. Wazuh Agent Management
+4. Integration Troubleshooting
+5. TheHive & Cortex
+6. Alert Generation & Testing
+7. Configuration Files
 
 ---
 
